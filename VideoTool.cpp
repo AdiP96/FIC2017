@@ -5,13 +5,20 @@
 #include "opencv2/highgui/highgui.hpp"
 //#include <opencv2\cv.h>
 #include "opencv2/opencv.hpp"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <string.h>
+
 
 using namespace std;
 using namespace cv;
 //initial min and max HSV filter values.
 //these will be changed using trackbars
 int H_MIN = 0;
-int H_MAX = 298;
+int H_MAX = 100;
 int S_MIN = 0;
 int S_MAX = 256;
 int V_MIN = 234;
@@ -182,9 +189,95 @@ void trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed) {
 		else putText(cameraFeed, "TOO MUCH NOISE! ADJUST FILTER", Point(0, 50), 1, 2, Scalar(0, 0, 255), 2);
 	}
 }
+
+void client(char *buff) {
+   int sockfd, portno, n;
+   struct sockaddr_in serv_addr;
+   struct hostent *server;
+   char buffer[256];
+   int i;
+   
+   strcpy(buffer, buff);
+   
+   /*
+   if (argc < 3) {
+      fprintf(stderr,"usage %s hostname port\n", argv[0]);
+      exit(0);
+   }
+	*/
+   portno = 20232;
+   
+   /* Create a socket point */
+   sockfd = socket(AF_INET, SOCK_STREAM, 0);
+   
+   if (sockfd < 0) {
+      perror("ERROR opening socket");
+      exit(1);
+   }
+	
+   server = gethostbyname("193.226.12.217");
+   
+   if (server == NULL) {
+      fprintf(stderr,"ERROR, no such host\n");
+      exit(0);
+   }
+   
+   bzero((char *) &serv_addr, sizeof(serv_addr));
+   serv_addr.sin_family = AF_INET;
+   bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
+   serv_addr.sin_port = htons(portno);
+   
+   /* Now connect to the server */
+   if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+      perror("ERROR connecting");
+      exit(1);
+   }
+   
+   /* Now ask for a message from the user, this message
+      * will be read by server
+   */
+   
+/*   printf("Please enter the message: ");
+   bzero(buffer,256);
+   fgets(buffer,255,stdin);
+*/
+   /* Send message to the server */
+   n = write(sockfd, buffer, strlen(buffer));
+   
+   if (n < 0) {
+      perror("ERROR writing to socket");
+      exit(1);
+   }
+   
+   /* Now read server response */
+   bzero(buffer,256);
+   n = read(sockfd, buffer, 255);
+   
+   if (n < 0) {
+      perror("ERROR reading from socket");
+      exit(1);
+   }
+
+   printf("%s\n",buffer);
+}
+
+void command(char *c){
+    int i;
+    char *b;
+    for(i=0; i<strlen(c); i++){
+      if(strchr(c[i], "f")){
+    //    sprintf(b,"%c", c[i]);
+        client(c[i]);
+        sleep(1);
+      }
+    }
+}
+
+
+
 int main(int argc, char* argv[])
 {
-
+  int a, b;
 	//some boolean variables for different functionality within this
 	//program
 	bool trackObjects = true;
@@ -201,7 +294,7 @@ int main(int argc, char* argv[])
 	Mat threshold;
   Mat threshold2;
 	//x and y values for the location of the object
-	int x = 0, y = 0;
+	int x = 0, y = 0, x2 = 0, y2 = 0;
 	//create slider bars for HSV filtering
 	createTrackbars();
 	//video capture object to acquire webcam feed
@@ -216,13 +309,16 @@ int main(int argc, char* argv[])
 
 
 
-	
-	while (1) {
+	int flag = 1;
+	while (flag) {
 
 
 		//store image to matrix
 		capture.read(cameraFeed);
-    capture.read(cameraFeed2);
+    if(cameraFeed.empty()){
+      printf("Stream error!");
+      exit(1);
+    }
 		//convert frame from BGR to HSV colorspace
 		cvtColor(cameraFeed, HSV, COLOR_BGR2HSV);
     cvtColor(cameraFeed, HSV2, COLOR_BGR2HSV);
@@ -232,16 +328,22 @@ int main(int argc, char* argv[])
     inRange(HSV2, Scalar(H_MIN2, S_MIN2, V_MIN2), Scalar(H_MAX2, S_MAX2, V_MAX2), threshold2);
 		//perform morphological operations on thresholded image to eliminate noise
 		//and emphasize the filtered object(s)
-		if (useMorphOps)
+		if (useMorphOps){
 			morphOps(threshold);
       morphOps(threshold2);
+    }
 		//pass in thresholded frame to our object tracking function
 		//this function will return the x and y coordinates of the
 		//filtered object
-		if (trackObjects)
+		if (trackObjects){
 			trackFilteredObject(x, y, threshold, cameraFeed);
-      trackFilteredObject(x, y, threshold2, cameraFeed);
-
+      trackFilteredObject(x2, y2, threshold2, cameraFeed);
+    }
+      if((x && y) && (x2 && y2))
+        flag = 1;
+      else
+        flag = 0;
+      
 		//show frames
 		imshow(windowName2, threshold);
 		imshow(windowName, cameraFeed);
@@ -250,8 +352,54 @@ int main(int argc, char* argv[])
 		//delay 30ms so that screen can refresh.
 		//image will not appear without this waitKey() command
 		waitKey(30);
+    while(x-
+      
 	}
+  
+  command("sss");
+  
 
 	return 0;
 }
+
+if((x-x2) < 0)  //obiectul in stanga
+{
+  command("f");
+  if(a<x)
+  {
+  
+    if(b<y)
+      command("r");
+    else
+      command("l");
+  }
+  else
+  {
+    if(b<y)
+      command("l");
+    else
+      command("r");
+  }
+}
+if((x-x2) > 0) /// continuare cod deplasare masina...
+    
+
+
+a=x;
+b=y;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
